@@ -1,0 +1,13 @@
+{
+    "tuan": {
+        "limitDevice": 3,
+        "DeviceID": [
+            "::1",
+            "::1",
+            "::1"
+        ],
+        "days": 10,
+        "expiryDate": "2024-02-1T10:58:09.640Z",
+        "type": null
+    }
+}
