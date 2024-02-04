@@ -1,5 +1,4 @@
 const fs = require('fs')
-const now = new Date()
 path = 'key.json'
 function ReadJson() {
     open = fs.readFileSync(path)
@@ -12,27 +11,35 @@ function WriteJson(jsonObject) {
     })
 }
 function Device(keys, key, ip, res) {
+    const now = new Date()
+    const expiryDate = new Date(now)
     if (keys[key].DeviceID.length < keys[key].limitDevice) {
         if (keys[key].DeviceID.includes(ip) === false && keys[key].DeviceID.length >= keys[key].limitDevice) {
-            res.json({ "error": "Giới hạn thiết bị ." })
+            return res.json({ "error": "Giới hạn thiết bị ." })
+        }
+        if (keys[key].expiryDate === null && keys[key].DeviceID == []) {
+            expiryDate.setDate(now.getDate() + keys[key].days)
+            keys[key].DeviceID.push(ip)
+            jsonObject = keys
+            jsonObject[key].expiryDate = expiryDate
+            jsonObject[key].DeviceID = keys[key].DeviceID
+            WriteJson(jsonObject)
+            return res.json({ "success": "Đã thêm ngày hết hạn và thiết bị." })
         }
         else {
             keys[key].DeviceID.push(ip)
-            res.json({ "success": "Đã thêm thiết bị." })
             WriteJson(keys)
+            return res.json({ "success": "Đã thêm thiết bị." })
         }
-    }
-    if (keys[key].expiryDate === null && keys[key].DeviceID.length == 0) {
-        expiryDate.setDate(currentDate.getDate() + keys[key].days);
-        jsonObject = keys
-        jsonObject[key].expiryDate = expiryDate
-        WriteJson(jsonObject)
-        res.json({ "success": "Đã thêm ngày hết hạn và thiết bị." })
     }
 }
 function expiry(keys, key, res) {
+    const now = new Date()
     if (new Date(keys[key].expiryDate) < now) {
-        res.json({ "error": "Key đã hết hạn." })
+        return res.json({ "error": "Key đã hết hạn." })
+    }
+    else {
+        return res.json(keys[key])
     }
 }
 
