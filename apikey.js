@@ -1,47 +1,27 @@
-const fs = require('fs')
-path = 'key.json'
-function ReadJson() {
-    open = fs.readFileSync(path)
-    jsonObject = JSON.parse(open)
-    return jsonObject
-}
-function WriteJson(jsonObject) {
-    fs.writeFile(path, JSON.stringify(jsonObject, null, 4), err => {
-        console.log()
-    })
-}
-function Device(keys, key, ip, res) {
-    const now = new Date()
-    const expiryDate = new Date(now)
-    if (keys[key].DeviceID.length < keys[key].limitDevice) {
-        if (keys[key].DeviceID.includes(ip) === false && keys[key].DeviceID.length >= keys[key].limitDevice) {
-            return res.json({ "error": "Giới hạn thiết bị ." })
-        }
-        if (keys[key].expiryDate === null && keys[key].DeviceID == []) {
-            expiryDate.setDate(now.getDate() + keys[key].days)
-            keys[key].DeviceID.push(ip)
-            jsonObject = keys
-            jsonObject[key].expiryDate = expiryDate
-            jsonObject[key].DeviceID = keys[key].DeviceID
-            WriteJson(jsonObject)
-            return res.json({ "success": "Đã thêm ngày hết hạn và thiết bị." })
-        }
-        else {
-            keys[key].DeviceID.push(ip)
-            WriteJson(keys)
-            return res.json({ "success": "Đã thêm thiết bị." })
-        }
-    }
-}
-function expiry(keys, key, res) {
-    const now = new Date()
-    if (new Date(keys[key].expiryDate) < now) {
-        return res.json({ "error": "Key đã hết hạn." })
-    }
-    else {
-        return res.json(keys[key])
-    }
+'use strict';
+
+const crypto = require('node:crypto');
+
+function generateLicenseKey() {
+  // 32 random bytes = 256 bits of entropy; base64url avoids URL-unsafe characters.
+  return 'ak_' + crypto.randomBytes(32).toString('base64url');
 }
 
+function hashLicenseKey(key) {
+  return crypto.createHash('sha256').update(key, 'utf8').digest('hex');
+}
 
-module.exports = { Device, expiry }
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function addDays(date, days) {
+  const result = new Date(date.getTime());
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+module.exports = { generateLicenseKey, hashLicenseKey, safeEqual, addDays };
