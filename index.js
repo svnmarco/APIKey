@@ -34,7 +34,7 @@ function createApp({ db = new Database(), adminToken = process.env.ADMIN_TOKEN }
   });
 
   function requireAdmin(req, res, next) {
-    if (!adminToken || !process.env.ADMIN_TOKEN && !arguments.length) {
+    if (!adminToken) {
       return res.status(503).json({ error: 'Admin authentication is not configured.' });
     }
     const header = req.get('authorization') || '';
@@ -78,7 +78,13 @@ function createApp({ db = new Database(), adminToken = process.env.ADMIN_TOKEN }
       if (!expiresAt) {
         expiresAt = addDays(now, license.days);
       }
-      db.registerDeviceAndActivate(license.id, deviceId, expiresAt.toISOString(), now.toISOString());
+      const registered = db.registerDeviceAndActivate(
+        license.id, deviceId, expiresAt.toISOString(), now.toISOString(), license.device_limit
+      );
+      if (!registered) {
+        db.audit('license.validation_denied', license.id, { reason: 'device_limit' });
+        return res.status(403).json({ valid: false, error: 'Device limit reached.' });
+      }
       db.audit('license.validation_succeeded', license.id, { deviceId });
       return res.json({
         valid: true,
