@@ -82,8 +82,19 @@ class LicenseDatabase {
       .get(licenseId).count;
   }
 
-  registerDeviceAndActivate(licenseId, deviceId, expiresAt, now) {
+  registerDeviceAndActivate(licenseId, deviceId, expiresAt, now, deviceLimit) {
+    // Keep capacity check and registration in one SQLite transaction so two
+    // concurrent requests cannot both claim the final device slot.
     const transaction = this.sqlite.transaction(() => {
+      const exists = this.sqlite.prepare(
+        'SELECT 1 FROM devices WHERE license_id = ? AND device_id = ?'
+      ).get(licenseId, deviceId);
+      if (!exists) {
+        const count = this.sqlite.prepare(
+          'SELECT COUNT(*) AS count FROM devices WHERE license_id = ?'
+        ).get(licenseId).count;
+        if (count >= deviceLimit) return false;
+      }
       this.sqlite.prepare(`
         UPDATE licenses SET expires_at = COALESCE(expires_at, ?) WHERE id = ?
       `).run(expiresAt, licenseId);
@@ -92,8 +103,9 @@ class LicenseDatabase {
         VALUES (?, ?, ?, ?)
         ON CONFLICT(license_id, device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at
       `).run(licenseId, deviceId, now, now);
+      return true;
     });
-    transaction();
+    return transaction();
   }
 
   revokeLicense(id, revokedAt) {
